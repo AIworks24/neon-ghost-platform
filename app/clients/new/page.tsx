@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
 import { toast } from 'sonner';
-import Link from 'next/link';
+import Breadcrumb from '@/components/layout/Breadcrumb';
 
 export default function NewClientPage() {
   const router = useRouter();
@@ -59,15 +59,15 @@ export default function NewClientPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
+      <Breadcrumb items={[
+        { label: 'Clients', href: '/clients' },
+        { label: 'Add New Client' }
+      ]} />
+
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Link href="/clients" className="text-gray-400 hover:text-white transition-colors">
-          ← Back
-        </Link>
-        <div>
-          <h1 className="text-3xl font-bold">Add New Client</h1>
-          <p className="text-gray-400">Create a new client profile with brand guidelines</p>
-        </div>
+      <div>
+        <h1 className="text-3xl font-bold">Add New Client</h1>
+        <p className="text-gray-400">Create a new client profile with brand guidelines</p>
       </div>
 
       {/* Form */}
@@ -254,9 +254,13 @@ Example:
           >
             {loading ? 'Creating...' : 'Create Client'}
           </button>
-          <Link href="/clients" className="btn-secondary flex-1 text-center">
+          <button
+            type="button"
+            onClick={() => router.push('/clients')}
+            className="btn-secondary flex-1"
+          >
             Cancel
-          </Link>
+          </button>
         </div>
       </form>
     </div>

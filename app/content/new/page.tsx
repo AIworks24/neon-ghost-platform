@@ -1,5 +1,6 @@
 'use client';
 
+import Breadcrumb from '@/components/layout/Breadcrumb';
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
@@ -169,11 +170,13 @@ export default function NewContentPage() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
+       <Breadcrumb items={[
+        { label: 'Content Library', href: '/content' },
+        { label: 'Generate Content' }
+      ]} />
+
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Link href="/content" className="text-gray-400 hover:text-white transition-colors">
-          ← Back
-        </Link>
         <div>
           <h1 className="text-3xl font-bold">Generate AI Content</h1>
           <p className="text-gray-400">Create social media content powered by AI</p>

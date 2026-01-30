@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase/client';
 import Link from 'next/link';
 import type { Client } from '@/types';
 import { formatDate } from '@/lib/utils';
+import Breadcrumb from '@/components/layout/Breadcrumb';
 
 export default function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([]);
@@ -53,6 +54,8 @@ export default function ClientsPage() {
 
   return (
     <div className="space-y-6">
+      <Breadcrumb items={[{ label: 'Clients' }]} />
+
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>

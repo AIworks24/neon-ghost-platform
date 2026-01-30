@@ -1,5 +1,6 @@
 'use client';
 
+import Breadcrumb from '@/components/layout/Breadcrumb';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import Link from 'next/link';
@@ -53,6 +54,8 @@ export default function ContentPage() {
 
   return (
     <div className="space-y-6">
+      <Breadcrumb items={[{ label: 'Content Library' }]} />
+      
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>

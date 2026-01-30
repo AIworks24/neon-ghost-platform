@@ -50,3 +50,8 @@ export function getStatusColor(status: string): string {
   };
   return colors[status] || 'bg-gray-500';
 }
+// Calculate ROAS (Return on Ad Spend)
+export function calculateROAS(revenue: number, spend: number): number {
+  if (spend === 0) return 0;
+  return revenue / spend;
+}

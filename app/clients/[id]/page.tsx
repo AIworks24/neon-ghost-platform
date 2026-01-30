@@ -1,5 +1,6 @@
 'use client';
 
+import Breadcrumb from '@/components/layout/Breadcrumb';
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
@@ -127,6 +128,11 @@ export default function ClientDetailPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
+      <Breadcrumb items={[
+        { label: 'Clients', href: '/clients' },
+        { label: client.name }
+      ]} />
+      
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link href="/clients" className="text-gray-400 hover:text-white transition-colors">

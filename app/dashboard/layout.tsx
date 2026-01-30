@@ -164,8 +164,8 @@ export default function DashboardLayout({
             href="/dashboard"
             className="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-300 hover:bg-dark-700 hover:text-white transition-colors"
           >
-            <span>📊</span>
-            <span>Dashboard</span>
+            <span>🏠</span>
+            <span>Home</span>
           </Link>
           <Link
             href="/clients"
@@ -175,18 +175,18 @@ export default function DashboardLayout({
             <span>Clients</span>
           </Link>
           <Link
-            href="/campaigns"
-            className="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-300 hover:bg-dark-700 hover:text-white transition-colors"
-          >
-            <span>🚀</span>
-            <span>Campaigns</span>
-          </Link>
-          <Link
             href="/content"
             className="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-300 hover:bg-dark-700 hover:text-white transition-colors"
           >
             <span>✨</span>
             <span>Content</span>
+          </Link>
+          <Link
+            href="/campaigns"
+            className="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-300 hover:bg-dark-700 hover:text-white transition-colors"
+          >
+            <span>🚀</span>
+            <span>Campaigns</span>
           </Link>
           <Link
             href="/reports"

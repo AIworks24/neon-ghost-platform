@@ -320,31 +320,89 @@ export default function CampaignDetailPage() {
             <div className="card">
               <h3 className="font-bold mb-3">Meta Integration</h3>
               {campaign.meta_campaign_id ? (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
-                    <p className="text-sm text-green-400">✓ Live on Meta</p>
+                    <p className="text-sm text-green-400 mb-1">✓ Published to Meta</p>
                     <p className="text-xs text-gray-400 mt-1">
                       Campaign ID: {campaign.meta_campaign_id}
                     </p>
+                    {campaign.meta_adset_id && (
+                      <p className="text-xs text-gray-400">
+                        Ad Set ID: {campaign.meta_adset_id}
+                      </p>
+                    )}
                   </div>
-                  <button className="btn-secondary w-full text-sm">
-                    Sync Metrics
+                  <button 
+                    onClick={async () => {
+                      try {
+                        const response = await fetch('/api/campaigns/sync-meta-metrics', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ campaign_id: campaignId }),
+                        });
+                        
+                        if (response.ok) {
+                          toast.success('Metrics synced successfully!');
+                          loadCampaign();
+                        } else {
+                          throw new Error('Failed to sync metrics');
+                        }
+                      } catch (error) {
+                        toast.error('Failed to sync metrics');
+                      }
+                    }}
+                    className="btn-secondary w-full text-sm"
+                  >
+                    🔄 Sync Metrics from Meta
                   </button>
                 </div>
               ) : (
-                <div className="space-y-2">
-                  <p className="text-sm text-gray-400 mb-3">
-                    This campaign is not yet published to Meta platforms
-                  </p>
+                <div className="space-y-3">
+                  <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+                    <p className="text-sm text-yellow-400 mb-1">⚠️ Not Published</p>
+                    <p className="text-xs text-gray-400">
+                      This campaign hasn't been published to Meta yet
+                    </p>
+                  </div>
                   <button 
+                    onClick={async () => {
+                      if (!confirm('Publish this campaign to Meta? It will be created in PAUSED status.')) {
+                        return;
+                      }
+                      
+                      try {
+                        toast.loading('Publishing to Meta...');
+                        
+                        const response = await fetch('/api/campaigns/publish-to-meta', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ campaign_id: campaignId }),
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (response.ok) {
+                          const message = data.demo_mode 
+                            ? '🎭 Demo Mode: Campaign "published" successfully! (No real API calls made)'
+                            : '✅ Campaign published to Meta successfully!';
+                          
+                          toast.success(message);
+                          loadCampaign();
+                        } else {
+                          throw new Error(data.error || 'Failed to publish');
+                        }
+                      } catch (error: any) {
+                        toast.error(error.message || 'Failed to publish to Meta');
+                      }
+                    }}
                     className="btn-primary w-full"
-                    disabled={campaign.status !== 'active'}
+                    disabled={campaign.status !== 'active' && campaign.status !== 'draft'}
                   >
                     🚀 Publish to Meta
                   </button>
-                  {campaign.status !== 'active' && (
-                    <p className="text-xs text-gray-500">
-                      Campaign must be active to publish
+                  {(campaign.status !== 'active' && campaign.status !== 'draft') && (
+                    <p className="text-xs text-gray-500 text-center">
+                      Campaign must be active or draft to publish
                     </p>
                   )}
                 </div>

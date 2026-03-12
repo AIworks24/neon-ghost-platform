@@ -62,7 +62,7 @@ export async function generateImage(request: AIImageGenerationRequest): Promise<
     n: 1,
   });
 
-  return response.data[0].url || '';
+  return response.data?.[0]?.url || '';
 }
 
 export async function generateBrandedContent(

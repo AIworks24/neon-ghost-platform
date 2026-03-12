@@ -139,9 +139,14 @@ export default function CampaignDetailPage() {
 
         <div className="flex gap-3">
           {campaign.status === 'draft' && (
-            <button onClick={() => handleStatusChange('active')} className="btn-primary">
-              ▶️ Launch Campaign
-            </button>
+            <>
+              <Link href={`/campaigns/${campaignId}/launch`} className="btn-primary flex items-center gap-2">
+                🚀 Launch Campaign
+              </Link>
+              <button onClick={() => handleStatusChange('active')} className="btn-secondary text-sm">
+                Mark Active (no launch)
+              </button>
+            </>
           )}
           {campaign.status === 'active' && (
             <button onClick={() => handleStatusChange('paused')} className="btn-secondary">

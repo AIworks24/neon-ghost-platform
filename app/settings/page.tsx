@@ -1,6 +1,8 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabase/client';
 import Breadcrumb from '@/components/layout/Breadcrumb';
 
 const SETTINGS_SECTIONS = [
@@ -10,6 +12,7 @@ const SETTINGS_SECTIONS = [
     label: 'Team Management',
     desc: 'Invite staff, assign roles, manage access',
     roles: ['super_admin', 'agency_admin'],
+    badge: null,
   },
   {
     href: '/settings/platforms',
@@ -17,7 +20,7 @@ const SETTINGS_SECTIONS = [
     label: 'Platform Credentials',
     desc: 'Connect Meta, TikTok, LinkedIn and more per client',
     roles: ['super_admin', 'agency_admin'],
-    badge: 'Coming next',
+    badge: null,
   },
   {
     href: '/settings/branding',
@@ -30,6 +33,24 @@ const SETTINGS_SECTIONS = [
 ];
 
 export default function SettingsPage() {
+  const [role, setRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
+      supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single()
+        .then(({ data }) => { if (data) setRole(data.role); });
+    });
+  }, []);
+
+  const visibleSections = SETTINGS_SECTIONS.filter(
+    s => !role || s.roles.includes(role)
+  );
+
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <Breadcrumb items={[{ label: 'Settings' }]} />
@@ -39,7 +60,7 @@ export default function SettingsPage() {
       </div>
 
       <div className="space-y-3">
-        {SETTINGS_SECTIONS.map(s => (
+        {visibleSections.map(s => (
           <Link
             key={s.href}
             href={s.href}
@@ -53,7 +74,9 @@ export default function SettingsPage() {
                 <div className="flex items-center gap-2">
                   <p className="font-semibold">{s.label}</p>
                   {s.badge && (
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-dark-600 text-gray-400">{s.badge}</span>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-dark-600 text-gray-400">
+                      {s.badge}
+                    </span>
                   )}
                 </div>
                 <p className="text-sm text-gray-400">{s.desc}</p>

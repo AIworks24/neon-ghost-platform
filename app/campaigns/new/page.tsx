@@ -4,147 +4,102 @@ import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
 import { toast } from 'sonner';
-import Link from 'next/link';
-import type { Client, Content, SocialPlatform } from '@/types';
+import type { Client } from '@/types';
 import Breadcrumb from '@/components/layout/Breadcrumb';
+
+const PLATFORMS = [
+  { id: 'facebook',  label: 'Facebook',    icon: '📘' },
+  { id: 'instagram', label: 'Instagram',   icon: '📸' },
+  { id: 'linkedin',  label: 'LinkedIn',    icon: '💼' },
+  { id: 'tiktok',    label: 'TikTok',      icon: '🎵' },
+  { id: 'twitter',   label: 'X / Twitter', icon: '🐦' },
+  { id: 'pinterest', label: 'Pinterest',   icon: '📌' },
+  { id: 'snapchat',  label: 'Snapchat',    icon: '👻' },
+];
+
+const OBJECTIVES = [
+  { value: 'awareness',  label: 'Brand Awareness' },
+  { value: 'traffic',    label: 'Website Traffic' },
+  { value: 'engagement', label: 'Engagement' },
+  { value: 'leads',      label: 'Lead Generation' },
+  { value: 'sales',      label: 'Sales / Conversions' },
+];
 
 export default function NewCampaignPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const preSelectedClient = searchParams.get('client');
 
   const [clients, setClients] = useState<Client[]>([]);
-  const [availableContent, setAvailableContent] = useState<Content[]>([]);
-  const [selectedContent, setSelectedContent] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
 
   const [formData, setFormData] = useState({
-    client_id: preSelectedClient || '',
-    name: '',
-    objective: 'awareness',
-    platforms: [] as SocialPlatform[],
-    budget: '',
+    client_id:  searchParams.get('client') || '',
+    name:       '',
+    objective:  'awareness',
+    budget:     '',
     start_date: '',
-    end_date: '',
-    target_audience: '',
-    notes: '',
+    end_date:   '',
+    notes:      '',
   });
 
   useEffect(() => {
-    loadClients();
-  }, []);
-
-  useEffect(() => {
-    if (formData.client_id) {
-      loadContent(formData.client_id);
-    }
-  }, [formData.client_id]);
-
-  const loadClients = async () => {
-    try {
+    const loadClients = async () => {
       const { data, error } = await supabase
         .from('clients')
         .select('*')
         .order('name');
+      if (!error) setClients(data || []);
+    };
+    loadClients();
+  }, []);
 
-      if (error) throw error;
-      setClients(data || []);
-    } catch (error) {
-      console.error('Error loading clients:', error);
-    }
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
+    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  const loadContent = async (clientId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('content')
-        .select('*')
-        .eq('client_id', clientId)
-        .in('status', ['draft', 'approved'])
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setAvailableContent(data || []);
-    } catch (error) {
-      console.error('Error loading content:', error);
-    }
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    setFormData(prev => ({
-      ...prev,
-      [e.target.name]: e.target.value
-    }));
-  };
-
-  const handlePlatformToggle = (platform: SocialPlatform) => {
-    setFormData(prev => ({
-      ...prev,
-      platforms: prev.platforms.includes(platform)
-        ? prev.platforms.filter(p => p !== platform)
-        : [...prev.platforms, platform]
-    }));
-  };
-
-  const handleContentToggle = (contentId: string) => {
-    setSelectedContent(prev =>
-      prev.includes(contentId)
-        ? prev.filter(id => id !== contentId)
-        : [...prev, contentId]
+  const togglePlatform = (id: string) => {
+    setSelectedPlatforms(prev =>
+      prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]
     );
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
 
+    if (!formData.client_id)          return toast.error('Please select a client');
+    if (!formData.name.trim())        return toast.error('Please enter a campaign name');
+    if (selectedPlatforms.length === 0) return toast.error('Please select at least one platform');
+
+    setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      if (formData.platforms.length === 0) {
-        throw new Error('Please select at least one platform');
-      }
-
-      // Create campaign
-      const { data: campaign, error: campaignError } = await supabase
+      const { data, error } = await supabase
         .from('campaigns')
         .insert({
-          client_id: formData.client_id,
-          name: formData.name,
-          objective: formData.objective,
-          platforms: formData.platforms,
-          budget: parseFloat(formData.budget) || 0,
+          client_id:  formData.client_id,
+          name:       formData.name.trim(),
+          objective:  formData.objective,
+          platforms:  selectedPlatforms,
+          budget:     parseFloat(formData.budget) || 0,
           start_date: formData.start_date || null,
-          end_date: formData.end_date || null,
-          targeting_parameters: formData.target_audience ? { audience: formData.target_audience } : null,
-          notes: formData.notes,
-          status: 'draft',
+          end_date:   formData.end_date   || null,
+          notes:      formData.notes      || null,
+          status:     'draft',
           created_by: user.id,
         })
         .select()
         .single();
 
-      if (campaignError) throw campaignError;
+      if (error) throw error;
 
-      // Link selected content to campaign
-      if (selectedContent.length > 0) {
-        const contentLinks = selectedContent.map(contentId => ({
-          campaign_id: campaign.id,
-          content_id: contentId,
-        }));
-
-        const { error: linkError } = await supabase
-          .from('campaign_content')
-          .insert(contentLinks);
-
-        if (linkError) throw linkError;
-      }
-
-      toast.success('Campaign created successfully!');
-      router.push(`/campaigns/${campaign.id}`);
+      toast.success('Campaign created!');
+      router.push(`/campaigns/${data.id}`);
     } catch (error: any) {
-      console.error('Error creating campaign:', error);
       toast.error(error.message || 'Failed to create campaign');
     } finally {
       setLoading(false);
@@ -152,280 +107,167 @@ export default function NewCampaignPage() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
+    <div className="max-w-3xl mx-auto space-y-6">
       <Breadcrumb items={[
         { label: 'Campaigns', href: '/campaigns' },
-        { label: 'Create Campaign' }
+        { label: 'New Campaign' },
       ]} />
 
       <div>
-        <h1 className="text-3xl font-bold">Create Campaign</h1>
-        <p className="text-gray-400">Launch a new social media campaign</p>
+        <h1 className="text-3xl font-bold">New Campaign</h1>
+        <p className="text-gray-400 mt-1">
+          Create a campaign — add creative and launch from the campaign detail page
+        </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column: Campaign Settings */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className="card space-y-6">
-            <h2 className="text-xl font-bold">Campaign Details</h2>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="card space-y-5">
 
-            {/* Client */}
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Client *
-              </label>
-              <select
-                name="client_id"
-                value={formData.client_id}
-                onChange={handleChange}
-                className="input"
-                required
-              >
-                <option value="">Select a client...</option>
-                {clients.map(client => (
-                  <option key={client.id} value={client.id}>
-                    {client.name}
-                  </option>
-                ))}
-              </select>
+          {/* Client */}
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Client *</label>
+            <select
+              name="client_id"
+              value={formData.client_id}
+              onChange={handleChange}
+              className="input"
+              required
+            >
+              <option value="">Select a client...</option>
+              {clients.map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Name */}
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Campaign Name *</label>
+            <input
+              name="name"
+              type="text"
+              value={formData.name}
+              onChange={handleChange}
+              className="input"
+              placeholder="Spring 2026 Product Launch"
+              required
+            />
+          </div>
+
+          {/* Objective */}
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Objective</label>
+            <select
+              name="objective"
+              value={formData.objective}
+              onChange={handleChange}
+              className="input"
+            >
+              {OBJECTIVES.map(o => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Platforms */}
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Platforms *{' '}
+              <span className="text-gray-500 font-normal">(select all that apply)</span>
+            </label>
+            <div className="grid grid-cols-4 gap-3">
+              {PLATFORMS.map(p => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => togglePlatform(p.id)}
+                  className={`p-3 rounded-xl border-2 transition-all text-center ${
+                    selectedPlatforms.includes(p.id)
+                      ? 'border-neon-purple bg-neon-purple/10 text-white'
+                      : 'border-dark-600 hover:border-dark-500 text-gray-400'
+                  }`}
+                >
+                  <div className="text-2xl mb-1">{p.icon}</div>
+                  <div className="text-xs font-semibold">{p.label}</div>
+                </button>
+              ))}
             </div>
+            {selectedPlatforms.length > 0 && (
+              <p className="text-xs text-neon-purple mt-2">
+                {selectedPlatforms.length} platform{selectedPlatforms.length !== 1 ? 's' : ''} selected
+              </p>
+            )}
+          </div>
 
-            {/* Campaign Name */}
+          {/* Budget + Dates */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Campaign Name *
-              </label>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Budget ($)</label>
               <input
-                name="name"
-                type="text"
-                value={formData.name}
+                name="budget"
+                type="number"
+                min="0"
+                step="0.01"
+                value={formData.budget}
                 onChange={handleChange}
                 className="input"
-                placeholder="Spring 2025 Product Launch"
-                required
+                placeholder="1000.00"
               />
             </div>
-
-            {/* Objective */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Campaign Objective
-              </label>
-              <select
-                name="objective"
-                value={formData.objective}
+              <label className="block text-sm font-medium text-gray-300 mb-2">Start Date</label>
+              <input
+                name="start_date"
+                type="date"
+                value={formData.start_date}
                 onChange={handleChange}
                 className="input"
-              >
-                <option value="awareness">Brand Awareness</option>
-                <option value="traffic">Website Traffic</option>
-                <option value="engagement">Engagement</option>
-                <option value="leads">Lead Generation</option>
-                <option value="sales">Sales / Conversions</option>
-              </select>
-            </div>
-
-            {/* Platforms */}
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Target Platforms *
-              </label>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <button
-                  type="button"
-                  onClick={() => handlePlatformToggle('facebook')}
-                  className={`p-4 rounded-lg border-2 transition-colors ${
-                    formData.platforms.includes('facebook')
-                      ? 'border-neon-purple bg-neon-purple/10'
-                      : 'border-dark-600 hover:border-dark-500'
-                  }`}
-                >
-                  <div className="text-2xl mb-2">📘</div>
-                  <div className="text-sm font-semibold">Facebook</div>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handlePlatformToggle('instagram')}
-                  className={`p-4 rounded-lg border-2 transition-colors ${
-                    formData.platforms.includes('instagram')
-                      ? 'border-neon-purple bg-neon-purple/10'
-                      : 'border-dark-600 hover:border-dark-500'
-                  }`}
-                >
-                  <div className="text-2xl mb-2">📸</div>
-                  <div className="text-sm font-semibold">Instagram</div>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handlePlatformToggle('linkedin')}
-                  className={`p-4 rounded-lg border-2 transition-colors ${
-                    formData.platforms.includes('linkedin')
-                      ? 'border-neon-purple bg-neon-purple/10'
-                      : 'border-dark-600 hover:border-dark-500'
-                  }`}
-                >
-                  <div className="text-2xl mb-2">💼</div>
-                  <div className="text-sm font-semibold">LinkedIn</div>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handlePlatformToggle('tiktok')}
-                  className={`p-4 rounded-lg border-2 transition-colors ${
-                    formData.platforms.includes('tiktok')
-                      ? 'border-neon-purple bg-neon-purple/10'
-                      : 'border-dark-600 hover:border-dark-500'
-                  }`}
-                >
-                  <div className="text-2xl mb-2">🎵</div>
-                  <div className="text-sm font-semibold">TikTok</div>
-                </button>
-              </div>
-            </div>
-
-            {/* Budget & Dates */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Budget ($)
-                </label>
-                <input
-                  name="budget"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={formData.budget}
-                  onChange={handleChange}
-                  className="input"
-                  placeholder="1000.00"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Start Date
-                </label>
-                <input
-                  name="start_date"
-                  type="date"
-                  value={formData.start_date}
-                  onChange={handleChange}
-                  className="input"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  End Date
-                </label>
-                <input
-                  name="end_date"
-                  type="date"
-                  value={formData.end_date}
-                  onChange={handleChange}
-                  className="input"
-                />
-              </div>
-            </div>
-
-            {/* Target Audience */}
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Target Audience
-              </label>
-              <textarea
-                name="target_audience"
-                value={formData.target_audience}
-                onChange={handleChange}
-                rows={3}
-                className="input"
-                placeholder="e.g., Women 25-45, interested in fitness and wellness, located in major US cities"
               />
             </div>
-
-            {/* Notes */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Campaign Notes
-              </label>
-              <textarea
-                name="notes"
-                value={formData.notes}
+              <label className="block text-sm font-medium text-gray-300 mb-2">End Date</label>
+              <input
+                name="end_date"
+                type="date"
+                value={formData.end_date}
                 onChange={handleChange}
-                rows={4}
                 className="input"
-                placeholder="Internal notes about this campaign..."
               />
             </div>
+          </div>
+
+          {/* Notes */}
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Notes{' '}
+              <span className="text-gray-500 font-normal">(optional)</span>
+            </label>
+            <textarea
+              name="notes"
+              value={formData.notes}
+              onChange={handleChange}
+              className="input"
+              rows={3}
+              placeholder="Campaign goals, brief, or notes for the team..."
+            />
           </div>
         </div>
 
-        {/* Right Column: Content Selection */}
-        <div className="space-y-6">
-          <div className="card space-y-4">
-            <h2 className="text-xl font-bold">Select Content</h2>
-            
-            {!formData.client_id ? (
-              <p className="text-gray-400 text-sm">Select a client to see available content</p>
-            ) : availableContent.length === 0 ? (
-              <div className="text-center py-6">
-                <p className="text-gray-400 text-sm mb-3">No content available for this client</p>
-                <Link 
-                  href={`/content/new?client=${formData.client_id}`}
-                  className="btn-secondary text-sm"
-                >
-                  Generate Content
-                </Link>
-              </div>
-            ) : (
-              <div className="space-y-3 max-h-96 overflow-y-auto">
-                {availableContent.map(content => (
-                  <div
-                    key={content.id}
-                    onClick={() => handleContentToggle(content.id)}
-                    className={`p-3 rounded-lg border-2 cursor-pointer transition-colors ${
-                      selectedContent.includes(content.id)
-                        ? 'border-neon-purple bg-neon-purple/10'
-                        : 'border-dark-600 hover:border-dark-500'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between mb-2">
-                      <h4 className="font-semibold text-sm line-clamp-1">{content.title}</h4>
-                      <input
-                        type="checkbox"
-                        checked={selectedContent.includes(content.id)}
-                        onChange={() => {}}
-                        className="shrink-0"
-                      />
-                    </div>
-                    <div className="flex gap-2 text-xs">
-                      <span className="badge bg-dark-700">{content.platform}</span>
-                      <span className="badge bg-dark-700">{content.content_type}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div className="pt-3 border-t border-dark-600 text-sm text-gray-400">
-              {selectedContent.length} content piece{selectedContent.length !== 1 ? 's' : ''} selected
-            </div>
-          </div>
-
-          {/* Submit */}
-          <div className="card space-y-3">
-            <button
-              type="submit"
-              disabled={loading}
-              className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? 'Creating...' : '🚀 Create Campaign'}
-            </button>
-            <button
-              type="button"
-              onClick={() => router.push('/campaigns')}
-              className="btn-secondary w-full"
-            >
-              Cancel
-            </button>
-          </div>
+        <div className="flex gap-3">
+          <button
+            type="submit"
+            disabled={loading}
+            className="btn-primary flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loading ? 'Creating...' : '✨ Create Campaign'}
+          </button>
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="btn-secondary"
+          >
+            Cancel
+          </button>
         </div>
       </form>
     </div>
